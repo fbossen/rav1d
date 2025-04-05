@@ -1713,7 +1713,14 @@ mod neon {
         s: c_int,
         bd: BD,
     ) {
-        sgr_box_vert::Fn::neon3().call(sumsq, sum, sumsq_out, sum_out, w, s, bd);
+        cfg_if::cfg_if! {
+            if #[cfg(target_arch = "arm")] {
+                sgr_box_row_v::Fn::neon3().call(sumsq, sum, sumsq_out, sum_out, w);
+                sgr_calc_row_ab1::Fn::neon3().call(sumsq_out, sum_out, w, s, bd);
+            } else {
+                sgr_box_vert::Fn::neon3().call(sumsq, sum, sumsq_out, sum_out, w, s, bd);
+            }
+        }
         rotate::<3, 1>(sumsq, sum);
     }
 
@@ -1726,7 +1733,14 @@ mod neon {
         s: c_int,
         bd: BD,
     ) {
-        sgr_box_vert::Fn::neon5().call(sumsq, sum, sumsq_out, sum_out, w, s, bd);
+        cfg_if::cfg_if! {
+            if #[cfg(target_arch = "arm")] {
+                sgr_box_row_v::Fn::neon5().call(sumsq, sum, sumsq_out, sum_out, w);
+                sgr_calc_row_ab1::Fn::neon5().call(sumsq_out, sum_out, w, s, bd);
+            } else {
+                sgr_box_vert::Fn::neon5().call(sumsq, sum, sumsq_out, sum_out, w, s, bd);
+            }
+        }
         rotate::<5, 2>(sumsq, sum);
     }
 
@@ -1884,7 +1898,16 @@ mod neon {
         w1: c_int,
         bd: BD,
     ) {
-        sgr_finish_weighted1::Fn::neon::<BD>().call(*dst, a_ptrs, b_ptrs, w, w1, bd);
+        cfg_if::cfg_if! {
+            if #[cfg(target_arch = "arm")] {
+                let mut tmp = Align16([0; FILTER_OUT_STRIDE]);
+
+                sgr_finish_filter_row1::Fn::neon().call(tmp, *dst, A_ptrs, B_ptrs, w);
+                sgr_weighted_row1::Fn::neon().call(*dst, tmp, w, w1, bd);
+            } else {
+                sgr_finish_weighted1::Fn::neon::<BD>().call(*dst, a_ptrs, b_ptrs, w, w1, bd);
+            }
+        }
         *dst += dst.pixel_stride::<BD>();
         rotate::<3, 1>(a_ptrs, b_ptrs);
     }
